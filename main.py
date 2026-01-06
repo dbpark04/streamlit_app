@@ -120,7 +120,32 @@ def on_search_change():
 
 product_options = df["product"].unique().tolist() 
 
-selected_product = st.selectbox("제품명을 입력하거나 선택하세요", options=[""] + product_options, index=0, key="product_search", on_change=on_search_change) 
+# 제품 선택 해제 버튼
+def clear_selected_product():
+    # 제품 선택, 검색 상태 초기화
+    st.session_state["product_search"] = ""
+    st.session_state["search_keyword"] = ""
+    scroll.request_scroll_to_top()
+
+col_sel, col_clear = st.columns([10, 1], vertical_alignment="bottom")
+
+with col_sel:
+    selected_product = st.selectbox(
+        "제품명을 입력하거나 선택하세요",
+        options=[""] + product_options,
+        index=0, key="product_search",
+        on_change=on_search_change # 제품 선택 시 검색 상태 동기화
+    )
+
+with col_clear:
+    # 클릭 시 선택 제품 초기화
+    st.button("✕", key="clear_product", help="선택 해제", on_click=clear_selected_product)             
+
+# 추천 상품 클릭
+def select_product_from_reco(product_name: str):
+    st.session_state["product_search"] = product_name
+    st.session_state["search_keyword"] = product_name
+    scroll.request_scroll_to_top()
 
 # 검색어로 사용할 값 
 search_text = selected_product if selected_product else ""
@@ -196,15 +221,27 @@ else:
     if page_df.empty:
         st.warning("조건에 맞는 상품이 없습니다.")
     else:
-        for _, row in page_df.iterrows():
-            st.markdown(f"""
-                        **{row['product']}**
-                        - 카테고리: {row['category']}
-                        - 피부 타입: {row['skin_type']}
-                        - 대표 키워드: {row['keyword']}
-                        - 평점: {row['score']}
-                        """)
-            st.divider()
+        for i, row in page_df.reset_index(drop=True).iterrows():
+            # 한 줄(행) 단위 레이아웃
+            col_btn, col_info = st.columns([2, 8])
+
+            with col_btn:
+                st.button(
+                    "선택",
+                    key=f"reco_select_{st.session_state.page}_{i}",
+                    on_click=select_product_from_reco,
+                    args=(row["product"],),
+                )
+
+            with col_info:
+                st.markdown(f"""
+                            **{row['product']}**
+                            - 카테고리: {row['category']}
+                            - 피부 타입: {row['skin_type']}
+                            - 대표 키워드: {row['keyword']}
+                            - 평점: {row['score']}
+                            """)
+                st.divider()
 
     # 페이지 이동 버튼
     st.markdown("---")
