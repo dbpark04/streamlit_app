@@ -4,6 +4,7 @@ import math
 import random # 임시
 import scroll
 from sidebar_filters import render_rating_slider, filter_by_rating
+import css
 
 st.set_page_config(layout="wide")
 
@@ -110,7 +111,7 @@ min_rating, max_rating = render_rating_slider()
 
 
 # ===== 메인 =====
-st.header("화장품 추천 대시보드")
+st.title("화장품 추천 대시보드")
 st.subheader("제품명 검색")
 
 search_keyword = st.session_state.get("search_keyword", "") 
@@ -130,7 +131,7 @@ is_initial = (not search_text and not selected_cat and not selected_skin)
 # 제품 정보
 if selected_product:
     product_info = df[df["product"] == selected_product].iloc[0]
-
+    
     st.subheader("선택한 제품 정보")
     col1, col2, col3 = st.columns(3)
 
@@ -239,3 +240,5 @@ else:
             f"</div>",
             unsafe_allow_html=True
         )
+
+css.set_css()
