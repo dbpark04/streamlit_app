@@ -9,7 +9,7 @@ import css
 
 st.set_page_config(layout="wide")
 
-# 페이지 최상단 앵커
+# 요청 시 상단 스크롤 이동 적용
 scroll.apply_scroll_to_top_if_requested()
 
 
@@ -39,19 +39,21 @@ def clear_selected_product():
     st.session_state["search_keyword"] = ""
     scroll.request_scroll_to_top()
 
-col_sel, col_clear = st.columns([10, 1], vertical_alignment="bottom")
+# selectbox 컨테이너 안으로 이동
+with st.container(border=True):
+    col_sel, col_clear = st.columns([10, 1], vertical_alignment="bottom")
 
-with col_sel:
-    selected_product = st.selectbox(
-        "제품명을 입력하거나 선택하세요",
-        options=[""] + product_options,
-        index=0, key="product_search",
-        on_change=on_search_change # 제품 선택 시 검색 상태 동기화
-    )
+    with col_sel:
+        selected_product = st.selectbox(
+            "제품명을 입력하거나 선택하세요",
+            options=[""] + product_options,
+            index=0, key="product_search",
+            on_change=on_search_change # 제품 선택 시 검색 상태 동기화
+        )
 
-with col_clear:
-    # 클릭 시 선택 제품 초기화
-    st.button("✕", key="clear_product", help="선택 해제", on_click=clear_selected_product)             
+    with col_clear:
+        # 클릭 시 선택 제품 초기화
+        st.button("✕", key="clear_product", help="선택 해제", on_click=clear_selected_product)             
 
 # 추천 상품 클릭
 def select_product_from_reco(product_name: str):
@@ -117,22 +119,24 @@ else:
         st.warning("조건에 맞는 상품이 없습니다.")
     else:
         for i, row in page_df.reset_index(drop=True).iterrows():
-            # 한 줄(행) 단위 레이아웃
-            col_btn, col_card = st.columns([2, 10])
-
-            with col_btn:
-                st.button(
-                    "선택",
-                    key=f"reco_select_{st.session_state.page}_{i}",
-                    on_click=select_product_from_reco,
-                    args=(row["product"],),
-                )
-            # 카드형 UI
+            # 카드 컨테이너 안에서 버튼, 내용 배치
             with st.container(border=True):
+
+                # 오른쪽 선택 버튼
+                top_left, top_right = st.columns([9, 1], vertical_alignment="center")
+                with top_right:
+                    st.button(
+                        "선택",
+                        key=f"reco_select_{st.session_state.page}_{i}",
+                        on_click=select_product_from_reco,
+                        args=(row["product"],),
+                    )
+
+                 # 카드형 UI
                 col_image, col_info = st.columns([3, 7])
 
                 with col_image:
-                    st.image(row["image_url"], use_container_width=True)
+                    st.image(row["image_url"], width="stretch")
 
                 with col_info:
                     badge_html = ""
@@ -159,7 +163,7 @@ else:
                             추천 점수: {row['score']}
                         </div>
                         """,
-                    unsafe_allow_html=True
+                        unsafe_allow_html=True
                     )
 
 
