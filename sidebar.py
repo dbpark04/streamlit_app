@@ -53,7 +53,7 @@ def sidebar(df):
 
             # 개별 sub 체크박스 (사용자 선택 상태 그대로 유지)
             for sub, sub_key in zip(sub_cats, sub_keys):
-                checked = st.checkbox(sub, key=sub_key)
+                checked = st.checkbox(str(sub), key=sub_key)
                 if checked:
                     selected_sub_cat.append(sub)
 
@@ -67,53 +67,57 @@ def sidebar(df):
     st.sidebar.subheader("피부 타입")
 
     selected_skin = []
-
-    for skin in df["skin_type"].unique():
-        if st.sidebar.checkbox(skin, key=f"skin_{skin}"):
-            selected_skin.append(skin)    
+    for skin in df["skin_type"].dropna().unique():
+        if st.sidebar.checkbox(str(skin), key=f"skin_{skin}"):
+            selected_skin.append(skin)
 
     # 평점 슬라이더
     st.sidebar.subheader("평점")
     min_rating, max_rating = st.sidebar.slider(
         "평점 범위",
         # 최소 평점
-        min_value=1.0,
+        min_value=0.0,
         # 최대 평점
         max_value=5.0,
         # 초기 선택 값
-        value=(3.0, 5.0),
+        value=(0.0, 5.0),
         step=0.1
     )
 
     # 가격 슬라이더
     st.sidebar.subheader("가격")
+
+    # 가격
+    df_min = int(df["price"].min())
+    df_max = int(df["price"].max())
+
     # 가격 입력받기
     col1, col2 = st.sidebar.columns(2)
 
     with col1:
         input_min_price = st.number_input(
             "최소 가격",
-            min_value=1000,
-            max_value=50000,
-            value=25000,
-            step=100
+            min_value=df_min,
+            max_value=df_max,
+            value=df_min,
+            step=1000
         )
 
     with col2:
         input_max_price = st.number_input(
             "최대 가격",
             min_value=input_min_price,
-            max_value=50000,
-            value=50000,
-            step=100
+            max_value=df_max,
+            value=df_max,
+            step=1000
         )
 
     min_price, max_price = st.sidebar.slider(
-        "",
-        min_value=1000,
-        max_value=50000,
-        value=(input_min_price, input_max_price),
-        step=100
+        "가격 범위",
+        min_value=df_min,
+        max_value=df_max,
+        value=(max(df_min, input_min_price), min(df_max, input_max_price)),
+        step=1000
     )
 
     return selected_sub_cat, selected_skin, min_rating, max_rating, min_price, max_price
@@ -123,8 +127,8 @@ def product_filter(df, search_text, selected_sub_cat, selected_skin, min_rating,
     filtered_df = df.copy()
 
     # 검색어 조건
-    if search_text is not None:
-        filtered_df = filtered_df[filtered_df["product"].str.contains(search_text, case=False)]
+    if search_text:
+        filtered_df = filtered_df[filtered_df["product"].str.contains(search_text, case=False, na=False)]
 
     # 카테고리 필터
     if selected_sub_cat:
@@ -136,9 +140,6 @@ def product_filter(df, search_text, selected_sub_cat, selected_skin, min_rating,
 
     # 평점 필터
     filtered_df = filtered_df[(filtered_df["score"] >= min_rating) & (filtered_df["score"] <= max_rating)]
-
-    # 평점 기준 정렬
-    filtered_df = filtered_df.sort_values(by="score", ascending=False)
 
     # 가격 필터
     filtered_df = filtered_df[(filtered_df["price"] >= min_price) & (filtered_df["price"] <= max_price)]
