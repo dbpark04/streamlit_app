@@ -85,20 +85,25 @@ def sidebar(df):
         "지성",
         "복합성",
         "민감성",
+        "여드름성",
         "미분류",
-        "복합/혼합(건성,민감성)",
-        "복합/혼합(건성,민감성,지성)",
-        "복합/혼합(민감성,지성)",
-        "복합/혼합(민감성,복합성)",
+        "복합/혼합"
     ]
 
     available_skins = df["skin_type"].dropna().unique().tolist()
-    ordered_skins = [s for s in skin_order if s in available_skins]
+    combined_skin_types = [s for s in available_skins if s.startswith("복합/혼합(")]
+
+    skin_mapping = {"복합/혼합": combined_skin_types}
+    ordered_skins = [s for s in skin_order if (s in available_skins or s == "복합/혼합")]
 
     selected_skin = []
+
     for skin in ordered_skins:
         if st.sidebar.checkbox(skin, key=f"skin_{skin}"):
-            selected_skin.append(skin)
+            if skin in skin_mapping:
+                selected_skin.extend(skin_mapping[skin])
+            else:
+                selected_skin.append(skin)
 
     # 평점 슬라이더
     st.sidebar.subheader("평점")
