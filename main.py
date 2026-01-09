@@ -10,6 +10,12 @@ from pathlib import Path
 import sys
 import os
 
+if "product_search" not in st.session_state:
+    st.session_state["product_search"] = ""
+if "search_keyword" not in st.session_state:
+    st.session_state["search_keyword"] = ""
+
+
 sys.path.append(os.path.dirname(__file__))
 
 st.set_page_config(layout="wide")
@@ -37,8 +43,9 @@ st.title("화장품 추천 대시보드")
 st.subheader("제품명 검색")
 
 search_keyword = st.session_state.get("search_keyword", "") 
-def on_search_change(): 
-    st.session_state.search_keyword = st.session_state.product_search 
+def on_search_change():
+    if "product_search" in st.session_state:
+        st.session_state["search_keyword"] = st.session_state["product_search"]
 
 # 제품 선택 해제 버튼
 def clear_selected_product():
