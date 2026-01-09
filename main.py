@@ -3,7 +3,7 @@ import pandas as pd
 import math
 import random # 임시
 import scroll
-from load_data import make_df
+from load_data import load_raw_df, make_df
 from sidebar import sidebar, product_filter
 import css
 from pathlib import Path
@@ -15,8 +15,9 @@ scroll.apply_scroll_to_top_if_requested()
 
 # ===== parquet 로딩 =====
 base_dir = Path(__file__).resolve().parent
-parquet_path = base_dir / "data" / "integrated_products_final.parquet"
-df = pd.read_parquet(parquet_path)
+parquet_path = base_dir / "data" / "integrated_products_final"
+
+df = load_raw_df(parquet_path)
 
 # 데이터프레임
 df = make_df(df)
@@ -102,7 +103,7 @@ else:
     badge_order = {"BEST": 0, "추천": 1, "": 2}
     filtered_df["badge_rank"] = filtered_df["badge"].map(badge_order).fillna(2)
 
-    filtered_df = filtered_df.sort_values(by=["badge_rank", "score"], ascending=[True, False])
+    filtered_df = filtered_df.sort_values(by=["badge_rank", "score", "total_reviews"], ascending=[True, False, False])
 
     # 페이지네이션
     items_page = 6

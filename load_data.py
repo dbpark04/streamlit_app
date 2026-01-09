@@ -1,8 +1,23 @@
 import pandas as pd
 from pathlib import Path
 
-# parquet_path = f"integrated_products_final.parquet"
-# df = pd.read_parquet(parquet_path)
+def load_raw_df(parquet_root: Path) -> pd.DataFrame:
+    dfs = []
+
+    # category=XXX 폴더들 순회
+    for p in parquet_root.glob("category=*/data.parquet"):
+        df = pd.read_parquet(p)
+
+        # 파티션 폴더명에서 category 값 추출
+        category = p.parent.name.replace("category=", "")
+        df["category"] = category
+
+        dfs.append(df)
+
+    if not dfs:
+        raise ValueError("parquet 파일을 찾지 못했습니다.")
+
+    return pd.concat(dfs, ignore_index=True)
 
 def make_df(df: pd.DataFrame) -> pd.DataFrame:
     rating_df = df.groupby("product_id", as_index=False).agg({
@@ -29,15 +44,15 @@ def make_df(df: pd.DataFrame) -> pd.DataFrame:
     image_url = f"https://tr.rbxcdn.com/180DAY-981c49e917ba903009633ed32b3d0ef7/420/420/Hat/Webp/noFilter"
 
     # 추천 뱃지
-    def calc_badge(score):
-        if score >= 4.8:
-            return "BEST"
-        elif score >= 4.5:
-            return "추천"
-        else:
-            return ""
+    def calc_badge(score, total_reviews):
+        if total_reviews >= 500:
+            if score >= 4.8:
+                return "BEST"
+            elif score >= 4.5:
+                return "추천"
+        return ""
 
-    rating_df["badge"] = rating_df["score"].apply(calc_badge)
+    rating_df["badge"] = rating_df.apply(lambda x: calc_badge(x["score"], x["total_reviews"]), axis=1)
 
     # 카테고리 정규화
     main_cats = [
