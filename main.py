@@ -3,13 +3,12 @@ import pandas as pd
 import math
 import random # 임시
 import scroll
-from load_data import load_raw_df, make_df
+from load_data import load_raw_df, make_df, load_reviews_map
 from sidebar import sidebar, product_filter
 import css
 from pathlib import Path
 import sys
 import os
-from load_data import load_reviews_map
 import re
 
 if "product_search" not in st.session_state:
@@ -284,4 +283,4 @@ else:
 
 css.set_css()
 
-st.caption(f"top_keywords non-empty: {(df['top_keywords'].astype(str).str.len() > 0).mean():.2%}")
+# st.caption(f"top_keywords non-empty: {(df['top_keywords'].astype(str).str.len() > 0).mean():.2%}")
