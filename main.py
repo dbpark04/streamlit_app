@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import math
 import scroll
-from load_data import load_raw_df, make_df
+from load_data import load_raw_df, make_df, load_reviews
 from sidebar import sidebar, product_filter
 import css
 from pathlib import Path
@@ -31,31 +31,10 @@ PRODUCTS_BASE_DIR = base_dir / "data" / "integrated_products_final"
 REVIEWS_BASE_DIR = base_dir / "data" / "partitioned_reviews"
 
 product_df = load_raw_df(PRODUCTS_BASE_DIR)
-reviews_df = load_raw_df(REVIEWS_BASE_DIR)
-
 df = make_df(product_df)
-reviews_df = reviews_df.drop(columns=["category"], errors="ignore")
 
 skin_options = df["skin_type"].unique().tolist()
 product_options = df["product_name"].unique().tolist()
-
-# 대표 리뷰 출력용 데이터프레임
-merge_df = product_df.merge(
-    reviews_df,
-    left_on=["product_id", "representative_review_id"],
-    right_on=["product_id", "id"],
-    how="left"
-)
-
-review_df = merge_df[[
-    "product_id",
-    "category",
-    "representative_review_id",
-    "id",
-    "full_text"
-]].rename(columns={"id": "review_id"})
-
-review_df["full_text"] = review_df["full_text"].apply(lambda x: x[0] if isinstance(x, (list, np.ndarray)) and len(x) > 0 else (x if isinstance(x, str) else ""))
 
 # ===== 사이드바 =====
 selected_sub_cat, selected_skin, min_rating, max_rating, min_price, max_price = sidebar(df)
@@ -140,19 +119,20 @@ if selected_product:
     sub_cat = product_info.get("sub_category", "")
 
     # 대표 리뷰
+    if selected_product:
+        product_info = df[df["product_name"] == selected_product].iloc[0]
+        product_id = product_info["product_id"]
+        review_id = product_info["representative_review_id"]
+        category = product_info["category"]
+        
+        text = load_reviews(product_id, review_id, category, REVIEWS_BASE_DIR)
+
     st.markdown("### 대표 리뷰")
 
-    q = review_df[review_df["product_id"] == product_info["product_id"]]
-
-    if q.empty:
+    if not text:
         st.info("대표 리뷰가 없습니다.")
     else:
-        text = q["full_text"].iloc[0]
-
-        if not isinstance(text, str) or not text.strip():
-            st.info("대표 리뷰 내용이 비어 있습니다.")
-        else:
-            st.text(text)
+        st.text(text)
 
 # ===== 추천 페이지 =====
 st.subheader("추천 상품")

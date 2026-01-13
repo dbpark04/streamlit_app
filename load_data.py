@@ -17,6 +17,44 @@ def load_raw_df(parquet_root: Path) -> pd.DataFrame:
         
     return df
 
+# 대표 리뷰 로드 & 가독성
+@st.cache_data
+def load_reviews(product_id: str, review_id: str, category: str, base_dir: Path) -> str:
+    category = category.replace("/", "_")
+    review_path = base_dir / f"category={category}" / "data.parquet"
+
+    if not review_path.exists():
+        return ""
+    try:
+        df = pd.read_parquet(review_path)
+    except Exception:
+        return ""
+    
+    filtered = df[(df["product_id"] == product_id) & (df["id"] == review_id)]
+
+    if filtered.empty:
+        return ""
+    
+    text = filtered["full_text"].values[0]
+
+    if isinstance(text, (list, np.ndarray)):
+        return text[0] if text else ""
+    elif not isinstance(text, str):
+        return ""
+    
+    def split_text(txt):
+        sentences = re.split(r'(?<=[.!?])\s+', txt)
+        return '\n'.join(sentences)
+    
+    pre_text = split_text(text.strip())
+    
+    max_len = 600
+    if len(pre_text) > max_len:
+        return pre_text[:max_len].rstrip() + "···"
+    else:
+        return pre_text
+    
+    
 def make_df(df: pd.DataFrame) -> pd.DataFrame:
     rating_df = df.groupby("product_id", as_index=False).agg({
         "rating_1": "sum",
@@ -110,6 +148,7 @@ def make_df(df: pd.DataFrame) -> pd.DataFrame:
                 "price",
                 "image_url",
                 "product_url",
+                "representative_review_id",
                 "total_reviews",
                 "top_keywords",
                 "category",
