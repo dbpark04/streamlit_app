@@ -1,28 +1,22 @@
 import pandas as pd
 from pathlib import Path
+import pyarrow.dataset as ds
 import streamlit as st
 import re
 import ast
 
+@st.cache_data
 def load_raw_df(parquet_root: Path) -> pd.DataFrame:
-    dfs = []
+    dataset = ds.dataset(parquet_root, format="parquet", partitioning="hive")
+    table = dataset.to_table()
+    df = table.to_pandas()
 
-    # 하위 디렉토리까지 모두 검색
-    for p in parquet_root.rglob("*.parquet"):
-        df = pd.read_parquet(p)
+    if "category" in df.columns:
+        df["category"] = df["category"].str.replace("_", "/", regex=False)
+        
+    return df
 
-        # category=XXX 폴더명 추출
-        category_folder = [part for part in p.parts if "category=" in part]
-        category = category_folder[0].replace("category=", "") if category_folder else "기타"
-        df["category"] = category
-
-        dfs.append(df)
-
-    if not dfs:
-        raise ValueError("parquet 파일을 찾지 못했습니다.")
-
-    return pd.concat(dfs, ignore_index=True)
-
+@st.cache_data
 def make_df(df: pd.DataFrame) -> pd.DataFrame:
     rating_df = df.groupby("product_id", as_index=False).agg({
         "rating_1": "sum",
@@ -114,15 +108,6 @@ def make_df(df: pd.DataFrame) -> pd.DataFrame:
                 "skin_type"
             ]].drop_duplicates("product_id").copy())
 
-
-    # 대표 리뷰 3개
-    if "representative_review_id" in df.columns:
-        rep_series = (
-            df.groupby("product_id")["representative_review_id"].apply(lambda x: [v for v in x if pd.notna(v)]))
-        product_df["representative_review_id"] = product_df["product_id"].map(lambda p: rep_series.get(p, [])[:3])
-    else:
-        product_df["representative_review_id"] = [[] for _ in range(len(product_df))]
-
     fin_df = product_df.merge(
         rating_df[["product_id", "score", "badge"]],
         on="product_id",
@@ -130,58 +115,3 @@ def make_df(df: pd.DataFrame) -> pd.DataFrame:
     )
 
     return fin_df
-
-@st.cache_data(show_spinner=False)
-def load_reviews_df(reviews_path):
-    reviews_path = Path(reviews_path)
-    if not reviews_path.exists():
-        raise FileNotFoundError(f"리뷰 파일을 찾지 못했습니다: {reviews_path}")
-
-    if reviews_path.suffix.lower() == ".parquet":
-        rdf = pd.read_parquet(reviews_path)
-    elif reviews_path.suffix.lower() == ".csv":
-        rdf = pd.read_csv(reviews_path)
-    else:
-        raise ValueError("지원하지 않는 리뷰 파일 형식입니다. parquet 를 사용하세요.")
-
-    # 컬럼명 표준화
-    if "review_text" not in rdf.columns:
-        for cand in ["content", "text", "review", "review_content"]:
-            if cand in rdf.columns:
-                rdf = rdf.rename(columns={cand: "review_text"})
-                break
-
-    if "review_id" not in rdf.columns or "review_text" not in rdf.columns:
-        raise ValueError("리뷰 파일에 review_id, review_text 컬럼이 필요합니다.")
-
-    rdf = rdf[["review_id", "review_text"]].copy()
-    return rdf
-
-def get_representative_texts(representative_review_id, reviews_df, n=3):
-    """
-    representative_review_id(단일/리스트/문자열)을 받아
-    reviews_df에서 review_text n개를 찾아 리스트로 반환
-    """
-    if reviews_df is None or reviews_df.empty:
-        return []
-
-    rid = representative_review_id
-    if rid is None or (isinstance(rid, float) and pd.isna(rid)):
-        return []
-
-    if isinstance(rid, str):
-        try:
-            rid = ast.literal_eval(rid)
-        except Exception:
-            rid = [x.strip() for x in re.split(r"[;,]", rid) if x.strip()]
-
-    if isinstance(rid, (list, tuple, set)):
-        rid_list = list(rid)
-
-    else:
-        rid_list = [rid]
-
-    rid_list = rid_list[:n]
-
-    review_map = dict(zip(reviews_df["review_id"].astype(str), reviews_df["review_text"]))
-    return [review_map[str(x)] for x in rid_list if str(x) in review_map and isinstance(review_map[str(x)], str)]
