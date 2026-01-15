@@ -91,6 +91,42 @@ search_text = selected_product if selected_product else ""
 # 초기 상태 여부
 is_initial = (not search_text and not selected_sub_cat and not selected_skin)
 
+# ===== 인기상품 TOP 5 (리뷰 수, 평점 ) =====
+if is_initial:
+    st.markdown("## 인기 상품 TOP 5")
+
+    popular_df = (
+        df.sort_values(
+            by=["total_reviews", "score"],
+            ascending=[False, False]
+        )
+        .head(5)
+        .reset_index(drop=True)
+    )
+
+    for i, row in popular_df.iterrows():
+        col_info, col_btn = st.columns([8, 2])
+
+        with col_info:
+            st.markdown(
+                f"""
+                **{row['product_name']}**  
+                평점: {row['score']} | 리뷰 수: {int(row['total_reviews']):,}
+                """
+            )
+
+        with col_btn:
+            st.button(
+                "선택",
+                key=f"popular_select_{i}",
+                on_click=select_product_from_reco,
+                args=(row["product_name"],),
+                use_container_width=True,
+            )
+
+    st.markdown("---")
+
+
 # 제품 정보
 if selected_product:
     product_info = df[df["product_name"] == selected_product].iloc[0]
