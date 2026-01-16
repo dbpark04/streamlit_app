@@ -18,6 +18,8 @@ if "product_search" not in st.session_state:
     st.session_state["product_search"] = ""
 if "search_keyword" not in st.session_state:
     st.session_state["search_keyword"] = ""
+if "page" not in st.session_state:
+    st.session_state.page = 1
 
 sys.path.append(os.path.dirname(__file__))
 
