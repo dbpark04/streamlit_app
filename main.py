@@ -236,14 +236,12 @@ if selected_product:
 
     DATE_RANGE_KEY = "rating_date_range"
 
-    # 최초 1회 기본값 세팅
-    if DATE_RANGE_KEY not in st.session_state:
-        st.session_state[DATE_RANGE_KEY] = (min_date, max_date)
+    default_date_range = (min_date, max_date)
 
     with col_mid:
         date_range = st.date_input(
             "기간 선택",
-            value=st.session_state[DATE_RANGE_KEY],
+            value=default_date_range,
             min_value=min_date,
             max_value=max_date,
             key=DATE_RANGE_KEY,
@@ -253,8 +251,6 @@ if selected_product:
     def reset_date_range():
         _skip_scroll_apply_once()  # reset 클릭도 그래프 조작으로 간주
         st.session_state[DATE_RANGE_KEY] = (min_date, max_date)
-        # 필요하면 즉시 반영용 rerun
-        st.rerun()
 
     with col_right:
         st.markdown("<br>", unsafe_allow_html=True)
