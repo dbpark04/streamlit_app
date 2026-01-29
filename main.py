@@ -59,7 +59,7 @@ def safe_scroll_to_top():
 # =========================
 # ✅ Athena에서 상품 DF 로딩 (전체 메타/추천/옵션용)
 # =========================
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=300, show_spinner=False)
 def load_products_from_athena():
     return fetch_all_products()
 
@@ -178,7 +178,7 @@ product_options = (
 # =========================
 # ✅ Athena 리뷰 로딩 유틸
 # =========================
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=300, show_spinner=False)
 def load_reviews_athena(product_id: str):
     return fetch_reviews_by_product(product_id)
 
@@ -212,11 +212,11 @@ def get_representative_review_text(reviews_df: pd.DataFrame, review_id):
 # ✅ Athena 필터 검색 (캐시)
 # - st.cache_data는 list가 해시 안 될 수 있어 tuple로 받음
 # =========================
-@st.cache_data(ttl=300)
-def search_products_athena_cached(categories_t, skins_t, min_r, max_r, min_p, max_p):
-    categories = list(categories_t) if categories_t else []
-    skins = list(skins_t) if skins_t else []
-    return search_products_flexible(categories, skins, min_r, max_r, min_p, max_p)
+# @st.cache_data(ttl=300)
+# def search_products_athena_cached(categories_t, skins_t, min_r, max_r, min_p, max_p):
+#     categories = list(categories_t) if categories_t else []
+#     skins = list(skins_t) if skins_t else []
+#     return search_products_flexible(categories, skins, min_r, max_r, min_p, max_p)
 
 
 # ===== 사이드바 =====
@@ -370,7 +370,8 @@ if selected_product:
     # st.button("⬅️ 검색 결과로 돌아가기", on_click=handle_back)
 
     # st.markdown("---")
-    product_rows = df[df["product_name"] == selected_product]
+    with st.spinner("정보를 불러오는 중입니다..."):
+        product_rows = df[df["product_name"] == selected_product]
     if product_rows.empty:
         st.warning("선택한 제품 정보를 찾을 수 없어요.")
     else:
@@ -410,10 +411,12 @@ if selected_product:
 
         reviews_df = pd.DataFrame()
         if product_id:
-            reviews_df = load_reviews_athena(str(product_id))
+            with st.spinner("정보를 불러오는 중입니다..."):
+                reviews_df = load_reviews_athena(str(product_id))
 
         st.markdown("### ✒️ 대표 리뷰")
-        text = get_representative_review_text(reviews_df, review_id)
+        with st.spinner("정보를 불러오는 중입니다..."):
+            text = get_representative_review_text(reviews_df, review_id)
         if not text:
             st.info("대표 리뷰가 없습니다.")
         else:
@@ -443,7 +446,7 @@ if selected_product:
                     freq_label = st.selectbox(
                         "평균 기준",
                         ["일간", "주간", "월간"],
-                        index=1,
+                        index=2,
                         key="rating_freq_label",
                         on_change=_skip_scroll_apply_once,
                     )
@@ -491,7 +494,8 @@ if selected_product:
                         & (review_df["date"] <= end_date)
                     ]
                     if not date_df.empty:
-                        trend_df = rating_trend(date_df, freq=freq, ma_window=ma_window)
+                        with st.spinner("정보를 불러오는 중입니다..."):
+                            trend_df = rating_trend(date_df, freq=freq, ma_window=ma_window)
                 else:
                     st.info("마지막 날짜를 선택해주세요.📆")
 
@@ -540,17 +544,36 @@ if not is_initial:
 if is_initial:
     st.info("왼쪽 사이드바 또는 검색어를 입력하여 상품을 찾아보세요.")
 else:
+    filtered_df = df.copy()
+
+    # 카테고리 필터
+    if selected_sub_cat:
+        filtered_df = filtered_df[filtered_df["sub_category"].isin(selected_sub_cat)]
+
+    # 피부 타입 필터
+    if selected_skin:
+        filtered_df = filtered_df[filtered_df["skin_type"].isin(selected_skin)]
+
+    # 평점 필터
+    filtered_df = filtered_df[
+        (filtered_df["score"] >= min_rating) & (filtered_df["score"] <= max_rating)
+    ]
+
+    # 가격 필터
+    filtered_df = filtered_df[
+        (filtered_df["price"] >= min_price) & (filtered_df["price"] <= max_price)
+    ]
     # =========================
     # ✅ (핵심) Athena에서 필터 검색 결과 로딩
     # =========================
-    filtered_df = search_products_athena_cached(
-        tuple(selected_sub_cat),
-        tuple(selected_skin),
-        float(min_rating),
-        float(max_rating),
-        int(min_price),
-        int(max_price),
-    )
+    # filtered_df = search_products_athena_cached(
+    #     tuple(selected_sub_cat),
+    #     tuple(selected_skin),
+    #     float(min_rating),
+    #     float(max_rating),
+    #     int(min_price),
+    #     int(max_price),
+    # )
 
     # UI에서 쓰는 컬럼명 맞추기
     if (
@@ -601,49 +624,50 @@ else:
     # ✅ 추천(벡터 기반)은 기존 df(전체 메타) 기준으로 유지
     # =========================
     if selected_product:
-        target_product = df[df["product_name"] == selected_product]
-        if not target_product.empty:
-            target_product_id = target_product.iloc[0]["product_id"]
+        with st.spinner("정보를 불러오는 중입니다..."):
+            target_product = df[df["product_name"] == selected_product]
+            if not target_product.empty:
+                target_product_id = target_product.iloc[0]["product_id"]
 
-            reco_results = recommend_similar_products(
-                product_id=target_product_id,
-                categories=None,
-                top_n=100,
-            )
-
-            # list일 경우
-            if isinstance(reco_results, list):
-                reco_list = reco_results
-            else:
-                # dict일 경우
-                reco_list = []
-                for _, items in reco_results.items():
-                    reco_list.extend(items)
-
-            if reco_list:
-                tmp_reco_df = pd.DataFrame(reco_list).rename(
-                    columns={
-                        "recommend_score": "reco_score",
-                        "cosine_similarity": "similarity",
-                    }
+                reco_results = recommend_similar_products(
+                    product_id=target_product_id,
+                    categories=None,
+                    top_n=100,
                 )
 
-                merged_df = df.merge(
-                    tmp_reco_df[["product_id", "reco_score", "similarity"]],
-                    on="product_id",
-                    how="left",
-                )
-                merged_df["reco_score"] = merged_df["reco_score"].fillna(0)
-                merged_df["similarity"] = merged_df["similarity"].fillna(0)
+                # list일 경우
+                if isinstance(reco_results, list):
+                    reco_list = reco_results
+                else:
+                    # dict일 경우
+                    reco_list = []
+                    for _, items in reco_results.items():
+                        reco_list.extend(items)
 
-                merged_df = merged_df[merged_df["product_id"] != target_product_id]
-                reco_df_view = (
-                    merged_df.query("reco_score > 0")
-                    .sort_values(
-                        by=["reco_score", "similarity"], ascending=[False, False]
+                if reco_list:
+                    tmp_reco_df = pd.DataFrame(reco_list).rename(
+                        columns={
+                            "recommend_score": "reco_score",
+                            "cosine_similarity": "similarity",
+                        }
                     )
-                    .head(6)
-                )
+
+                    merged_df = df.merge(
+                        tmp_reco_df[["product_id", "reco_score", "similarity"]],
+                        on="product_id",
+                        how="left",
+                    )
+                    merged_df["reco_score"] = merged_df["reco_score"].fillna(0)
+                    merged_df["similarity"] = merged_df["similarity"].fillna(0)
+
+                    merged_df = merged_df[merged_df["product_id"] != target_product_id]
+                    reco_df_view = (
+                        merged_df.query("reco_score > 0")
+                        .sort_values(
+                            by=["reco_score", "similarity"], ascending=[False, False]
+                        )
+                        .head(6)
+                    )
 
     # =========================
     # ✅ 페이지네이션 (Athena 결과 기준)
