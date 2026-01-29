@@ -419,7 +419,8 @@ if selected_product:
 
         if product_info.get("product_url"):
             st.link_button("상품 페이지", str(product_info["product_url"]))
-
+        
+        st.markdown("---")
         st.markdown("### 📃 대표 키워드")
         top_kw = product_info.get("top_keywords_str", "")
         if isinstance(top_kw, (list, np.ndarray)):
@@ -428,8 +429,6 @@ if selected_product:
 
         product_id = product_info.get("product_id", "")
         review_id = product_info.get("representative_review_id_roberta", None)
-
-        st.markdown("---")
 
         # ---------------------------------------------------------
         # 🚀 [핵심] 1. 화면에 미리 자리(Placeholders) 만들기
@@ -659,9 +658,26 @@ if selected_product:
 # =========================
 if not is_initial:
     if selected_product:
+        st.markdown("---")
         st.subheader("👍 이 상품과 유사한 추천 상품")
     else:
         st.subheader("🌟 검색 결과")
+
+    col_1, col_2 = st.columns([7, 3])
+    with col_2:
+        sort_option = st.selectbox(
+            "",
+            options=[
+                "추천순",
+                "평점 높은 순",
+                "리뷰 많은 순",
+                "가격 낮은 순",
+                "가격 높은 순",
+            ],
+            index=0,
+            key="sort_option",
+            on_change=_skip_scroll_apply_once
+        )
 
 if is_initial:
     st.info("왼쪽 사이드바 또는 검색어를 입력하여 상품을 찾아보세요.")
@@ -741,11 +757,42 @@ else:
     search_df_view["badge_rank"] = (
         search_df_view.get("badge", "").map(badge_order).fillna(2)
     )
-    # 상품 정렬:
+    # 상품 기본 정렬:
     search_df_view = search_df_view.sort_values(
         by=["badge_rank", "score", "total_reviews"],
         ascending=[True, False, False],
     )
+
+    if sort_option == "추천순":
+        # 뱃지 > 평점 > 리뷰
+        search_df_view = search_df_view.sort_values(
+            by=["badge_rank", "score", "total_reviews"],
+            ascending=[True, False, False],
+        )
+
+    elif sort_option == "평점 높은 순":
+        search_df_view = search_df_view.sort_values(
+            by=["score", "total_reviews"],
+            ascending=[False, False],
+        )
+
+    elif sort_option == "리뷰 많은 순":
+        search_df_view = search_df_view.sort_values(
+            by=["total_reviews", "score"],
+            ascending=[False, False],
+        )
+
+    elif sort_option == "가격 낮은 순":
+        search_df_view = search_df_view.sort_values(
+            by=["price", "score"],
+            ascending=[True, False],
+        )
+
+    elif sort_option == "가격 높은 순":
+        search_df_view = search_df_view.sort_values(
+            by=["price", "score"],
+            ascending=[False, False],
+        )
 
     # =========================
     # ✅ 추천(벡터 기반)은 기존 df(전체 메타) 기준으로 유지
@@ -822,6 +869,7 @@ else:
         max_rating,
         min_price,
         max_price,
+        sort_option
     )
     if st.session_state.get("prev_filter") != cur_filter:
         st.session_state.page = 1
