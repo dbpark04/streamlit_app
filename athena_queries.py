@@ -171,3 +171,17 @@ def load_products_data_from_athena(
         df[vector_col] = df[vector_col].apply(json.loads)
 
     return df
+
+
+# athena_queries.py
+def fetch_representative_review_text(product_id: str, review_id: int):
+    """딱 1개의 리뷰 텍스트만 쿼리하여 속도 극대화"""
+    pid = str(product_id).replace("'", "''")
+    # SQL WHERE절에 review_id를 직접 넣는 것이 핵심입니다.
+    sql = f"""
+    SELECT full_text, title, content
+    FROM coupang_db.partitioned_reviews_v2
+    WHERE product_id = '{pid}' AND id = {int(review_id)}
+    LIMIT 1
+    """
+    return athena_read(sql)

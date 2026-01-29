@@ -22,6 +22,7 @@ from athena_queries import (
     fetch_all_products,
     fetch_reviews_by_product,
     search_products_flexible,
+    fetch_representative_review_text,
 )
 
 
@@ -408,16 +409,31 @@ if selected_product:
         product_id = product_info.get("product_id", "")
         review_id = product_info.get("representative_review_id_roberta", None)
 
+        # ✅ 대표 리뷰는 ID로 직접 가져오기 (모든 리뷰 로드 불필요)
+        st.markdown("### ✒️ 대표 리뷰")
+        if product_id and pd.notna(review_id):
+            with st.spinner("대표 리뷰 로딩 중..."):
+                try:
+                    rep_df = fetch_representative_review_text(
+                        str(product_id), int(review_id)
+                    )
+                    if not rep_df.empty and "full_text" in rep_df.columns:
+                        text = rep_df.iloc[0]["full_text"]
+                        if text:
+                            st.text(text)
+                        else:
+                            st.info("대표 리뷰가 없습니다.")
+                    else:
+                        st.info("대표 리뷰가 없습니다.")
+                except Exception as e:
+                    st.warning(f"대표 리뷰 로드 실패: {e}")
+        else:
+            st.info("대표 리뷰가 없습니다.")
+
+        # 평점 추이용으로만 리뷰 로드
         reviews_df = pd.DataFrame()
         if product_id:
             reviews_df = load_reviews_athena(str(product_id))
-
-        st.markdown("### ✒️ 대표 리뷰")
-        text = get_representative_review_text(reviews_df, review_id)
-        if not text:
-            st.info("대표 리뷰가 없습니다.")
-        else:
-            st.text(text)
 
         st.markdown("### 📈 평점 추이")
         if (
@@ -516,7 +532,7 @@ if selected_product:
                         )
                     )
                     fig.update_layout(
-                        yaxis=dict(range=[1, 5]),
+                        yaxis=dict(range=[1, 5.1]),
                         xaxis_title="날짜",
                         yaxis_title="평균 평점",
                         hovermode="x unified",
