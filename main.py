@@ -9,13 +9,20 @@ import os
 import re
 import scroll
 
-from load_data import make_df, rating_trend  # parquet 로더는 더 이상 안 씀(필요하면 유지 가능)
+from load_data import (
+    make_df,
+    rating_trend,
+)  # parquet 로더는 더 이상 안 씀(필요하면 유지 가능)
 from sidebar import sidebar  # product_filter는 더 이상 사용 안 함
 from recommend_similar_products import recommend_similar_products, print_recommendations
 from pathlib import Path
 
 # ✅ Athena 연동
-from athena_queries import fetch_all_products, fetch_reviews_by_product, search_products_flexible
+from athena_queries import (
+    fetch_all_products,
+    fetch_reviews_by_product,
+    search_products_flexible,
+)
 
 
 if "product_search" not in st.session_state:
@@ -66,7 +73,6 @@ except Exception:
     df = product_df.copy()
 
 
-
 # =========================
 # ✅ UI가 기대하는 컬럼들 보정/매핑
 # =========================
@@ -77,6 +83,7 @@ main_cats = [
     "메이크업",
 ]
 
+
 def norm_cat(path):
     if not isinstance(path, str):
         return ""
@@ -86,6 +93,7 @@ def norm_cat(path):
             idx = parts.index(main)
             return " > ".join(parts[idx:])
     return ""
+
 
 def split_category(path: str):
     if not isinstance(path, str):
@@ -104,7 +112,9 @@ if "category_path_norm" not in df.columns:
     elif "path" in df.columns:
         df["category_path_norm"] = df["path"].apply(norm_cat)
     elif "category" in df.columns:
-        df["category_path_norm"] = df["category"].astype(str).str.replace("_", "/", regex=False)
+        df["category_path_norm"] = (
+            df["category"].astype(str).str.replace("_", "/", regex=False)
+        )
     else:
         df["category_path_norm"] = ""
 
@@ -130,9 +140,13 @@ if "image_url" not in df.columns:
 
 if "representative_review_id_roberta" not in df.columns:
     if "representative_review_id_roberta_sentiment" in df.columns:
-        df["representative_review_id_roberta"] = df["representative_review_id_roberta_sentiment"]
+        df["representative_review_id_roberta"] = df[
+            "representative_review_id_roberta_sentiment"
+        ]
     elif "representative_review_id_roberta_semantic" in df.columns:
-        df["representative_review_id_roberta"] = df["representative_review_id_roberta_semantic"]
+        df["representative_review_id_roberta"] = df[
+            "representative_review_id_roberta_semantic"
+        ]
     else:
         df["representative_review_id_roberta"] = np.nan
 
@@ -142,16 +156,23 @@ if "product_url" not in df.columns:
 if "top_keywords_str" not in df.columns:
     if "top_keywords" in df.columns:
         df["top_keywords_str"] = df["top_keywords"].apply(
-            lambda x: ", ".join(map(str, x))
-            if isinstance(x, (list, np.ndarray))
-            else re.sub(r"[\[\]']", "", str(x))
+            lambda x: (
+                ", ".join(map(str, x))
+                if isinstance(x, (list, np.ndarray))
+                else re.sub(r"[\[\]']", "", str(x))
+            )
         )
     else:
         df["top_keywords_str"] = ""
 
-skin_options = df["skin_type"].dropna().unique().tolist() if "skin_type" in df.columns else []
-product_options = df["product_name"].dropna().unique().tolist() if "product_name" in df.columns else []
-
+skin_options = (
+    df["skin_type"].dropna().unique().tolist() if "skin_type" in df.columns else []
+)
+product_options = (
+    df["product_name"].dropna().unique().tolist()
+    if "product_name" in df.columns
+    else []
+)
 
 
 # =========================
@@ -199,7 +220,9 @@ def search_products_athena_cached(categories_t, skins_t, min_r, max_r, min_p, ma
 
 
 # ===== 사이드바 =====
-selected_sub_cat, selected_skin, min_rating, max_rating, min_price, max_price = sidebar(df)
+selected_sub_cat, selected_skin, min_rating, max_rating, min_price, max_price = sidebar(
+    df
+)
 
 # ===== 메인 =====
 st.title("🎀 화장품 추천 대시보드")
@@ -260,7 +283,7 @@ else:
     search_text = st.session_state.search_keyword.strip()
 
 # 초기 상태 여부
-is_initial = (not search_text and not selected_sub_cat and not selected_skin)
+is_initial = not search_text and not selected_sub_cat and not selected_skin
 
 
 # ===== 인기상품 TOP 5 =====
@@ -277,7 +300,8 @@ if is_initial:
         df.sort_values(by=sort_cols, ascending=[False] * len(sort_cols))
         .head(5)
         .reset_index(drop=True)
-        if sort_cols else df.head(5).reset_index(drop=True)
+        if sort_cols
+        else df.head(5).reset_index(drop=True)
     )
 
     cols = st.columns(len(popular_df)) if len(popular_df) > 0 else []
@@ -286,8 +310,9 @@ if is_initial:
         with cols[i]:
             with st.container(border=True):
                 if row.get("image_url"):
-                    st.image(row["image_url"], use_container_width=True, output_format="PNG")
-                    
+                    st.image(
+                        row["image_url"], use_container_width=True, output_format="PNG"
+                    )
 
                 st.markdown(
                     f"""
@@ -334,6 +359,17 @@ if is_initial:
 # ✅ 제품 정보(선택 시)
 # =========================
 if selected_product:
+
+    # ?
+    # def handle_back():
+    #     st.session_state["product_search"] = ""
+    #     st.session_state["search_keyword"] = ""  # 필요 시 키워드도 같이 초기화
+    #     # safe_scroll_to_top() # 필요 시 추가
+
+    # # 버튼에 on_click 인자를 넘겨줍니다.
+    # st.button("⬅️ 검색 결과로 돌아가기", on_click=handle_back)
+
+    # st.markdown("---")
     product_rows = df[df["product_name"] == selected_product]
     if product_rows.empty:
         st.warning("선택한 제품 정보를 찾을 수 없어요.")
@@ -345,9 +381,13 @@ if selected_product:
 
         col1.metric("제품명", product_info.get("product_name", ""))
         col2.metric(
-                    "브랜드",
-                    "-" if pd.isna(product_info.get("brand")) else str(product_info.get("brand"))
-                    )
+            "브랜드",
+            (
+                "-"
+                if pd.isna(product_info.get("brand"))
+                else str(product_info.get("brand"))
+            ),
+        )
 
         col3.metric("피부 타입", product_info.get("skin_type", ""))
 
@@ -380,7 +420,11 @@ if selected_product:
             st.text(text)
 
         st.markdown("### 📈 평점 추이")
-        if reviews_df.empty or "date" not in reviews_df.columns or "score" not in reviews_df.columns:
+        if (
+            reviews_df.empty
+            or "date" not in reviews_df.columns
+            or "score" not in reviews_df.columns
+        ):
             st.info("평점 추이를 그릴 리뷰 데이터가 없습니다.")
         else:
             review_df = reviews_df[["date", "score"]].copy()
@@ -426,7 +470,12 @@ if selected_product:
 
                 with col_right:
                     st.markdown("<br>", unsafe_allow_html=True)
-                    st.button("↺", key="reset_date", help="날짜 초기화", on_click=reset_date_range)
+                    st.button(
+                        "↺",
+                        key="reset_date",
+                        help="날짜 초기화",
+                        on_click=reset_date_range,
+                    )
 
                 trend_df = pd.DataFrame()
                 is_date_range_ready = False
@@ -437,7 +486,10 @@ if selected_product:
                     start_date = pd.to_datetime(start_date)
                     end_date = pd.to_datetime(end_date)
 
-                    date_df = review_df.loc[(review_df["date"] >= start_date) & (review_df["date"] <= end_date)]
+                    date_df = review_df.loc[
+                        (review_df["date"] >= start_date)
+                        & (review_df["date"] <= end_date)
+                    ]
                     if not date_df.empty:
                         trend_df = rating_trend(date_df, freq=freq, ma_window=ma_window)
                 else:
@@ -501,7 +553,10 @@ else:
     )
 
     # UI에서 쓰는 컬럼명 맞추기
-    if "score" not in filtered_df.columns and "avg_rating_with_text" in filtered_df.columns:
+    if (
+        "score" not in filtered_df.columns
+        and "avg_rating_with_text" in filtered_df.columns
+    ):
         filtered_df["score"] = filtered_df["avg_rating_with_text"]
 
     if "image_url" not in filtered_df.columns:
@@ -509,7 +564,9 @@ else:
     if "badge" not in filtered_df.columns:
         filtered_df["badge"] = ""
     if "category_path_norm" not in filtered_df.columns:
-        filtered_df["category_path_norm"] = filtered_df["category"] if "category" in filtered_df.columns else ""
+        filtered_df["category_path_norm"] = (
+            filtered_df["category"] if "category" in filtered_df.columns else ""
+        )
 
     # =========================
     # ✅ 키워드/제품명 검색은 Athena 결과에 대해 프론트에서 추가 필터
@@ -518,9 +575,13 @@ else:
         s = search_text.strip()
         # top_keywords는 array/string 섞여 있을 수 있어서 str 변환 후 contains
         filtered_df = filtered_df[
-            filtered_df["product_name"].astype(str).str.contains(s, case=False, na=False)
+            filtered_df["product_name"]
+            .astype(str)
+            .str.contains(s, case=False, na=False)
             | filtered_df["brand"].astype(str).str.contains(s, case=False, na=False)
-            | filtered_df.get("top_keywords", pd.Series([""] * len(filtered_df))).astype(str).str.contains(s, case=False, na=False)
+            | filtered_df.get("top_keywords", pd.Series([""] * len(filtered_df)))
+            .astype(str)
+            .str.contains(s, case=False, na=False)
         ]
 
     page_df = pd.DataFrame()
@@ -532,7 +593,9 @@ else:
     search_df_view["similarity"] = 0.0
 
     badge_order = {"BEST": 0, "추천": 1, "": 2}
-    search_df_view["badge_rank"] = search_df_view.get("badge", "").map(badge_order).fillna(2)
+    search_df_view["badge_rank"] = (
+        search_df_view.get("badge", "").map(badge_order).fillna(2)
+    )
 
     # =========================
     # ✅ 추천(벡터 기반)은 기존 df(전체 메타) 기준으로 유지
@@ -559,7 +622,10 @@ else:
 
             if reco_list:
                 tmp_reco_df = pd.DataFrame(reco_list).rename(
-                    columns={"recommend_score": "reco_score", "cosine_similarity": "similarity"}
+                    columns={
+                        "recommend_score": "reco_score",
+                        "cosine_similarity": "similarity",
+                    }
                 )
 
                 merged_df = df.merge(
@@ -573,7 +639,9 @@ else:
                 merged_df = merged_df[merged_df["product_id"] != target_product_id]
                 reco_df_view = (
                     merged_df.query("reco_score > 0")
-                    .sort_values(by=["reco_score", "similarity"], ascending=[False, False])
+                    .sort_values(
+                        by=["reco_score", "similarity"], ascending=[False, False]
+                    )
                     .head(6)
                 )
 
@@ -588,7 +656,15 @@ else:
         st.session_state.page = 1
     st.session_state.page = min(st.session_state.page, total_pages)
 
-    cur_filter = (search_text, tuple(selected_sub_cat), tuple(selected_skin), min_rating, max_rating, min_price, max_price)
+    cur_filter = (
+        search_text,
+        tuple(selected_sub_cat),
+        tuple(selected_skin),
+        min_rating,
+        max_rating,
+        min_price,
+        max_price,
+    )
     if st.session_state.get("prev_filter") != cur_filter:
         st.session_state.page = 1
         st.session_state.prev_filter = cur_filter
@@ -719,7 +795,7 @@ if selected_product:
 
 
 # ===== 페이지 이동 =====
-show_pagination = (selected_product or selected_sub_cat)
+show_pagination = selected_product or selected_sub_cat
 
 if show_pagination and "total_pages" in locals() and total_pages > 1:
     st.markdown("---")

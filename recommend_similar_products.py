@@ -131,10 +131,8 @@ def recommend_similar_products(
     # 1. 모든 상품 데이터 로드
     print(f"상품 데이터 로드 중... (카테고리: {categories or '전체'})")
     all_products = load_products_data_from_athena(
-    categories=categories,
-    vector_type=vector_type
-)
-
+        categories=categories, vector_type=vector_type
+    )
 
     if all_products.empty:
         print("[경고] 상품 데이터를 찾을 수 없습니다.")

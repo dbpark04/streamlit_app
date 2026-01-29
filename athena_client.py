@@ -7,9 +7,11 @@ import boto3
 @st.cache_resource
 def get_boto3_session():
     # AWS 환경(EC2/ECS 등)에서는 IAM Role 권장
-    return boto3.Session(region_name=st.secrets["AWS_REGION"],
-                        aws_access_key_id=st.secrets["AWS_ACCESS_KEY_ID"],
-                        aws_secret_access_key=st.secrets["AWS_SECRET_ACCESS_KEY"],)
+    return boto3.Session(
+        region_name=st.secrets["AWS_REGION"],
+        aws_access_key_id=st.secrets["AWS_ACCESS_KEY_ID"],
+        aws_secret_access_key=st.secrets["AWS_SECRET_ACCESS_KEY"],
+    )
 
 
 def athena_read(sql: str):
