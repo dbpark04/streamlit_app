@@ -18,8 +18,6 @@ from pathlib import Path
 from athena_queries import fetch_all_products, fetch_reviews_by_product, search_products_flexible
 
 
-st.cache_data.clear()
-
 if "product_search" not in st.session_state:
     st.session_state["product_search"] = ""
 if "search_keyword" not in st.session_state:
@@ -229,12 +227,13 @@ with st.container(border=True):
         )
 
     with col_sel:
-        selected_product = st.selectbox(
+        st.selectbox(
             "🔎 제품명 검색",
             options=[""] + product_options,
-            index=0,
             key="product_search",
         )
+
+        selected_product = st.session_state.get("product_search", "")
 
     with col_clear:
         st.button(

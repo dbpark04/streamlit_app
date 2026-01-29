@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 import glob
 from typing import List, Optional, Dict, Any
+from athena_queries import load_products_data_from_athena
 
 
 def cosine_similarity(vec1: np.ndarray, vec2: np.ndarray) -> float:
@@ -28,7 +29,7 @@ def cosine_similarity(vec1: np.ndarray, vec2: np.ndarray) -> float:
 def load_products_data(
     processed_data_dir: str = "./data/processed_data",
     categories: Optional[List[str]] = None,
-    vector_type: str = "roberta",
+    vector_type: str = "roberta_semantic",
 ) -> pd.DataFrame:
     """
     상품 데이터 로드 (integrated_products_final)
@@ -86,7 +87,7 @@ def recommend_similar_products(
     categories: Optional[List[str]] = None,
     top_n: int = 10,
     processed_data_dir: str = "./data/processed_data",
-    vector_type: str = "roberta",
+    vector_type: str = "roberta_semantic",
     exclude_self: bool = True,
 ) -> Dict[str, List[Dict[str, Any]]]:
     """
@@ -129,7 +130,11 @@ def recommend_similar_products(
     """
     # 1. 모든 상품 데이터 로드
     print(f"상품 데이터 로드 중... (카테고리: {categories or '전체'})")
-    all_products = load_products_data(processed_data_dir, categories, vector_type)
+    all_products = load_products_data_from_athena(
+    categories=categories,
+    vector_type=vector_type
+)
+
 
     if all_products.empty:
         print("[경고] 상품 데이터를 찾을 수 없습니다.")

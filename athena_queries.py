@@ -1,6 +1,8 @@
 # athena_queries.py
+import pandas as pd
+import json
+from typing import Optional, List
 from athena_client import athena_read, quote_list
-
 
 SQL_ALL_PRODUCTS = """
 SELECT
@@ -124,3 +126,40 @@ def search_products_flexible(categories, skin_types, min_rating, max_rating, min
     {limit_sql}
     """
     return athena_read(sql)
+
+def load_products_data_from_athena(
+    categories: Optional[List[str]] = None,
+    vector_type: str = "roberta_semantic",
+    table_name: str = "coupang_db.integrated_products_final_v2"
+):
+    vector_col = f"product_vector_{vector_type}"
+
+    where_clause = ""
+    if categories:
+        cat_list = quote_list(categories)
+        where_clause = f"WHERE category IN ({cat_list})"
+
+    sql = f"""
+    SELECT
+        product_id,
+        product_name,
+        brand,
+        category,
+        sentiment_score,
+        avg_rating_with_text,
+        total_reviews,
+        product_url,
+        price,
+        top_keywords,
+        product_vector_roberta_semantic
+    FROM {table_name}
+    {where_clause}
+    """
+
+
+    df = athena_read(sql)
+
+    if not df.empty and df[vector_col].dtype == object and isinstance(df[vector_col].iloc[0], str):
+        df[vector_col] = df[vector_col].apply(json.loads)
+
+    return df
