@@ -484,9 +484,7 @@ if selected_product:
                         on_change=_skip_scroll_apply_once,
                     )
 
-                freq_map = {"일간": ("D", 7), "주간": ("W", 4), "월간": ("M", 3)}
-                # 에러시 아래꺼로
-                # freq_map = {"일간": ("D", 7), "주간": ("W", 4), "월간": ("ME", 3)}
+                freq_map = {"일간": ("D", 7), "주간": ("W", 4), "월간": ("ME", 3)}
                 freq, ma_window = freq_map[freq_label]
 
                 DATE_RANGE_KEY = "rating_date_range"
