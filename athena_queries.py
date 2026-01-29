@@ -72,7 +72,9 @@ def fetch_reviews_by_product(product_id: str):
     return athena_read(sql)
 
 
-def search_products_flexible(categories, skin_types, min_rating, max_rating, min_price, max_price, limit=None):
+def search_products_flexible(
+    categories, skin_types, min_rating, max_rating, min_price, max_price, limit=None
+):
     """
     categories/skin_types가 비어있으면 해당 조건은 WHERE에서 제거(=전체 허용)
     """
@@ -95,7 +97,9 @@ def search_products_flexible(categories, skin_types, min_rating, max_rating, min
             """.strip()
         )
 
-    where_parts.append(f"avg_rating_with_text BETWEEN {float(min_rating)} AND {float(max_rating)}")
+    where_parts.append(
+        f"avg_rating_with_text BETWEEN {float(min_rating)} AND {float(max_rating)}"
+    )
     where_parts.append(f"price BETWEEN {int(min_price)} AND {int(max_price)}")
 
     where_sql = "\n  AND ".join(where_parts)
@@ -127,10 +131,11 @@ def search_products_flexible(categories, skin_types, min_rating, max_rating, min
     """
     return athena_read(sql)
 
+
 def load_products_data_from_athena(
     categories: Optional[List[str]] = None,
     vector_type: str = "roberta_semantic",
-    table_name: str = "coupang_db.integrated_products_final_v2"
+    table_name: str = "coupang_db.integrated_products_final_v2",
 ):
     vector_col = f"product_vector_{vector_type}"
 
@@ -156,10 +161,13 @@ def load_products_data_from_athena(
     {where_clause}
     """
 
-
     df = athena_read(sql)
 
-    if not df.empty and df[vector_col].dtype == object and isinstance(df[vector_col].iloc[0], str):
+    if (
+        not df.empty
+        and df[vector_col].dtype == object
+        and isinstance(df[vector_col].iloc[0], str)
+    ):
         df[vector_col] = df[vector_col].apply(json.loads)
 
     return df
