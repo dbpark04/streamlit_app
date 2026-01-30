@@ -8,10 +8,10 @@ import numpy as np
 import plotly.graph_objects as go
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from load_data import rating_trend
-from athena_queries import fetch_representative_review_text
+from utils.load_data import rating_trend
+from services.athena_queries import fetch_representative_review_text
 from utils.data_utils import load_reviews_athena
-from recommend_similar_products import recommend_similar_products
+from services.recommend_similar_products import recommend_similar_products
 
 
 def render_top_keywords(product_info: pd.Series):

@@ -7,8 +7,8 @@ import pandas as pd
 import numpy as np
 import re
 
-from load_data import make_df
-from athena_queries import fetch_all_products, fetch_reviews_by_product
+from utils.load_data import make_df
+from services.athena_queries import fetch_all_products, fetch_reviews_by_product
 
 # 메인 카테고리 목록
 MAIN_CATS = [

@@ -1,14 +1,15 @@
 """
 🎀 화장품 추천 대시보드 - 메인 앱
 """
+
 import streamlit as st
 import pandas as pd
 import sys
 import os
 
-import css
-import scroll
-from sidebar import sidebar
+from utils import css
+from utils import scroll
+from layouts.sidebar import sidebar
 
 # 컴포넌트 임포트
 from components.search_bar import render_search_bar, get_search_text, is_initial_state

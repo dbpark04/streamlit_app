@@ -5,7 +5,7 @@
 import streamlit as st
 import pandas as pd
 
-from recommend_similar_products import recommend_similar_products
+from services.recommend_similar_products import recommend_similar_products
 
 
 def get_recommendations(
