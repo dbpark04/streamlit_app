@@ -23,86 +23,131 @@ def sidebar(df):
 
     st.sidebar.markdown("---")  # 구분선
     st.sidebar.header("검색 조건")
-    st.sidebar.subheader("카테고리")
 
-    selected_sub_cat = []
+    # 전체 카테고리 키 수집
+    all_category_keys = []
 
+    # 모든 카테고리 키를 먼저 수집 (디폴트 값 설정을 위해)
     for main_cat in sorted(df["main_category"].dropna().unique()):
         if not str(main_cat).strip():
             continue
 
-        with st.sidebar.expander(str(main_cat), expanded=False):
-            main_df = df[df["main_category"] == main_cat]
-            middle_cats = [
-                m
-                for m in main_df["middle_category"].dropna().unique().tolist()
-                if str(m).strip()
-            ]
+        main_df = df[df["main_category"] == main_cat]
+        middle_cats = [
+            m
+            for m in main_df["middle_category"].dropna().unique().tolist()
+            if str(m).strip()
+        ]
 
-            main_all_key = f"all_main_{main_cat}"
-            main_sub_keys = []
+        if not middle_cats:
+            sub_cats = sorted(main_df["sub_category"].dropna().unique())
+            for sub in sub_cats:
+                key = f"sub_{main_cat}_{sub}"
+                all_category_keys.append(key)
+        else:
+            for middle in sorted(middle_cats):
+                sub_df = main_df[main_df["middle_category"] == middle]
+                sub_cats = sorted(sub_df["sub_category"].dropna().unique())
 
-            # 중간 카테고리x
-            if not middle_cats:
-                sub_cats = sorted(main_df["sub_category"].dropna().unique())
+                if len(sub_cats) == 1 and sub_cats[0] == middle:
+                    key = f"sub_{main_cat}_{middle}"
+                    all_category_keys.append(key)
+                else:
+                    for sub in sub_cats:
+                        key = f"sub_{main_cat}_{middle}_{sub}"
+                        all_category_keys.append(key)
 
-                for sub in sub_cats:
-                    key = f"sub_{main_cat}_{sub}"
-                    main_sub_keys.append(key)
+    # 전체 선택 버튼 초기화 (최초 실행 시 True)
+    if "category_select_all" not in st.session_state:
+        st.session_state["category_select_all"] = True
+        # 모든 카테고리 키를 True로 설정
+        for key in all_category_keys:
+            if key not in st.session_state:
+                st.session_state[key] = True
 
-                    if st.checkbox(sub, key=key):
-                        selected_sub_cat.append(sub)
+    # 전체 선택/해제 토글 함수
+    def toggle_all_categories():
+        val = st.session_state.get("category_select_all", False)
+        for key in all_category_keys:
+            st.session_state[key] = val
 
-            # 중간 카테고리o
-            else:
-                expandable_middles = [] # sub 있음
-                flat_middles = []   # mid 까지만
+    # 최상단 노드: 전체 카테고리
+    with st.sidebar.expander("카테고리", expanded=True):
+        st.checkbox(
+            "전체 선택/해제",
+            key="category_select_all",
+            on_change=toggle_all_categories,
+        )
 
-                for middle in sorted(middle_cats):
-                    sub_df = main_df[main_df["middle_category"] == middle]
-                    sub_cats = sorted(sub_df["sub_category"].dropna().unique())
+        # st.markdown("---")  # 구분선
 
-                        # sub 1개 이상
-                    if len(sub_cats) >= 1:
-                        expandable_middles.append((middle, sub_cats))
-                    else:
-                        # sub 없음
-                        flat_middles.append(middle)
+        selected_sub_cat = []
 
-                # sub 존재하는 경우
-                for middle, sub_cats in expandable_middles:
-                    with st.expander(middle, expanded=False):
-                        middle_all_key = f"all_middle_{(main_cat)}_{(middle)}"
-                        middle_sub_keys = []
+        for main_cat in sorted(df["main_category"].dropna().unique()):
+            if not str(main_cat).strip():
+                continue
 
-                        def toggle_middle_all(keys, all_key):
-                            val = st.session_state.get(all_key, False)
-                            for k in keys:
-                                st.session_state[k] = val
+            with st.expander(str(main_cat), expanded=False):
+                main_df = df[df["main_category"] == main_cat]
+                middle_cats = [
+                    m
+                    for m in main_df["middle_category"].dropna().unique().tolist()
+                    if str(m).strip()
+                ]
 
-                        st.checkbox(
-                            "전체 선택",
-                            key=middle_all_key,
-                            on_change=toggle_middle_all,
-                            args=(middle_sub_keys, middle_all_key),
-                        )
+                main_all_key = f"all_main_{main_cat}"
+                main_sub_keys = []
 
-                        for sub in sub_cats:
-                            key = f"sub_{(main_cat)}_{(middle)}_{(sub)}"
-                            middle_sub_keys.append(key)
-                            main_sub_keys.append(key)
+                # 중간 카테고리x
+                if not middle_cats:
+                    sub_cats = sorted(main_df["sub_category"].dropna().unique())
 
-                            if st.checkbox(sub, key=key):
-                                selected_sub_cat.append(sub)
-
-                # mid 까지만 → 맨 하단 checkbox로 표시
-                if flat_middles:
-                    for middle in flat_middles:
-                        key = f"sub_{(main_cat)}_{(middle)}"
+                    for sub in sub_cats:
+                        key = f"sub_{main_cat}_{sub}"
                         main_sub_keys.append(key)
 
-                        if st.checkbox(middle, key=key):
-                            selected_sub_cat.append(middle)
+                        if st.checkbox(sub, key=key):
+                            selected_sub_cat.append(sub)
+
+                # 중간 카테고리o
+                else:
+                    for middle in sorted(middle_cats):
+                        sub_df = main_df[main_df["middle_category"] == middle]
+                        sub_cats = sorted(sub_df["sub_category"].dropna().unique())
+
+                        # mid == sub 인 경우: expander 없이 checkbox 하나
+                        if len(sub_cats) == 1 and sub_cats[0] == middle:
+                            key = f"sub_{main_cat}_{middle}"
+                            main_sub_keys.append(key)
+
+                            if st.checkbox(middle, key=key):
+                                selected_sub_cat.append(middle)
+
+                        # 일반적인 mid > sub 구조
+                        else:
+                            with st.expander(middle, expanded=False):
+                                middle_all_key = f"all_middle_{main_cat}_{middle}"
+                                middle_sub_keys = []
+
+                                def toggle_middle_all(keys, all_key):
+                                    val = st.session_state.get(all_key, False)
+                                    for k in keys:
+                                        st.session_state[k] = val
+
+                                st.checkbox(
+                                    "전체 선택",
+                                    key=middle_all_key,
+                                    on_change=toggle_middle_all,
+                                    args=(middle_sub_keys, middle_all_key),
+                                )
+
+                                for sub in sub_cats:
+                                    key = f"sub_{main_cat}_{middle}_{sub}"
+                                    middle_sub_keys.append(key)
+                                    main_sub_keys.append(key)
+
+                                    if st.checkbox(sub, key=key):
+                                        selected_sub_cat.append(sub)
 
     st.sidebar.caption(f"선택된 카테고리: {len(selected_sub_cat)}개")
 
